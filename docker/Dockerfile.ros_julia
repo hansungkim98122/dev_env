@@ -1,0 +1,132 @@
+# Backup Dockerfile of ROS/Julia 0.6.4 image for reference.
+
+# How to build:
+# Build docker
+# $: docker build -t genesis:j0.6.4 . > build.log
+# $: tail -f build.log
+# Delete all docker images
+# $: docker rmi $(docker images -q)
+
+##################################
+# Starting point : ROS base
+From ros:kinetic-ros-core-xenial
+RUN apt-get update && \
+    apt-get install -y ros-kinetic-tf ros-kinetic-tf2
+
+###################################
+# Bash configuration for root user
+RUN echo "export PATH=$PATH:/opt/julia/bin/" >> /root/.bashrc && \
+	echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /root/.bashrc
+
+###################################
+# For X11 forwarding
+# Set up username (developer)
+RUN apt-get -y install sudo && \
+    export uid=1000 gid=1000 && \
+    mkdir -p /home/developer && \
+    echo "developer:x:${uid}:${gid}:Developer,,,:/home/developer:/bin/bash" >> /etc/passwd && \
+    echo "developer:x:${uid}:" >> /etc/group && \
+    echo "developer ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/developer && \
+    chmod 0440 /etc/sudoers.d/developer && \
+    chown ${uid}:${gid} -R /home/developer && \
+	apt-get clean && \
+	rm -rf /var/lib/apt/lists/*	
+
+USER developer
+ENV HOME /home/developer
+
+###################################
+# Utilities
+RUN sudo apt-get update && \
+	sudo apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o DPkg::Options::="--force-confold" && \
+	sudo apt-get install -y --no-install-recommends \
+	apt-utils \
+    man-db \
+    libc6 \
+    libc6-dev \
+    build-essential \
+    wget \
+    curl \
+    file \
+    vim \
+    gedit \
+    tmux \
+    unzip \
+    pkg-config \
+    cmake \
+    gfortran \
+    gettext \
+    libreadline-dev \
+    libncurses-dev \
+    libpcre3-dev \
+    libgnutls28-dev \
+    libzmq3-dev \
+    python \
+    python-yaml \
+    python-m2crypto \
+    python-crypto \
+    msgpack-python \
+    python-dev \
+    python-setuptools \
+    supervisor \
+    python-jinja2 \
+    python-requests \
+    python-isodate \
+    python-git \
+    python-pip \
+    && sudo apt-get clean && \
+	sudo rm -rf /var/lib/apt/lists/*	
+
+################################
+# Python language & libraries
+RUN sudo pip install --upgrade pyzmq PyDrive google-api-python-client jsonpointer jsonschema tornado sphinx pygments nose readline mistune invoke scipy && \
+sudo pip install --upgrade pip==9.0.3 && \
+sudo pip install 'notebook==4.2' && \
+sudo apt-get update && \
+sudo apt-get -y install python-matplotlib && \
+sudo apt-get clean && \
+sudo rm -rf /var/lib/apt/lists/*	
+
+#############
+# Julia language & libraries
+# Install julia 0.6.4
+RUN sudo mkdir -p /opt/julia-0.6.4 && \
+    sudo curl -s -L https://julialang-s3.julialang.org/bin/linux/x64/0.6/julia-0.6.4-linux-x86_64.tar.gz | sudo tar -C /opt/julia-0.6.4 -x -z --strip-components=1 -f - && \
+	sudo ln -fs /opt/julia-0.6.4 /opt/julia-0.6
+
+# Make v0.6.4 default julia
+RUN sudo ln -fs /opt/julia-0.6.4 /opt/julia && \
+	echo "export PATH=$PATH:/opt/julia/bin/" >> /home/developer/.bashrc && \
+	echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /home/developer/.bashrc
+
+# add, build, compile packages, -e = evaluate
+RUN	/opt/julia/bin/julia -e 'Pkg.add("CSV")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("DataFrames")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("Ipopt")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("JuMP")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("NearestNeighbors")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("NPZ")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("PyPlot")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("RobotOS")' && \
+	/opt/julia/bin/julia -e 'Pkg.add("YAML")' && \
+	/opt/julia/bin/julia -e 'using CSV' && \
+	/opt/julia/bin/julia -e 'using ControlSystems' && \
+	/opt/julia/bin/julia -e 'using DataFrames' && \
+	/opt/julia/bin/julia -e 'using Ipopt' && \
+	/opt/julia/bin/julia -e 'using JuMP' && \
+	/opt/julia/bin/julia -e 'using NearestNeighbors' && \
+	/opt/julia/bin/julia -e 'using NPZ' && \
+	/opt/julia/bin/julia -e 'using PyPlot' && \
+	/opt/julia/bin/julia -e 'using RobotOS' && \
+	/opt/julia/bin/julia -e 'using YAML'
+
+###############################################
+# Video utilities
+RUN sudo apt-get update && \
+	sudo apt-get -y install --no-install-recommends hdf5-tools && \
+	sudo apt-get install -y --no-install-recommends build-essential gfortran pkg-config liblapack-dev libblas-dev && \
+	sudo apt-get -y install --no-install-recommends libfreetype6-dev && \
+	sudo apt-get -y install --no-install-recommends libpng12-dev && \
+	sudo apt-get clean && \
+	sudo rm -rf /var/lib/apt/lists/*
