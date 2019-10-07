@@ -137,6 +137,19 @@ RUN	/opt/julia/bin/julia -e 'ENV["PYTHON"]="/usr/bin/python2"; Pkg.add("PyCall")
 	#/opt/julia/bin/julia -e 'using YAML' && \
 	/opt/julia/bin/julia -e 'using PyCall'
 
+# Additional Julia libraries for H-OBCA
+RUN /opt/julia/bin/julia -e 'Pkg.add("PyPlot")' && \
+    /opt/julia/bin/julia -e 'Pkg.add("NearestNeighbors")' && \
+    /opt/julia/bin/julia -e 'Pkg.add("DataFrames")' && \
+    /opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
+    /opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
+    /opt/julia/bin/julia -e 'Pkg.add("Hiccup")' && \
+    /opt/julia/bin/julia -e 'using PyPlot' && \
+    /opt/julia/bin/julia -e 'using NearestNeighbors' && \
+    /opt/julia/bin/julia -e 'using DataFrames' && \
+    /opt/julia/bin/julia -e 'using ControlSystems'
+
+
 # Install Pyjulia
 RUN pip2 install --user julia &&\
     pip2 install --upgrade pip==9.0.3 && \
