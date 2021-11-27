@@ -1,6 +1,10 @@
 # Main ROS/Cuda environment for local development.  Creates ros_env image.
 # Adjust the cuda version below for your computer.
-FROM nvidia/cudagl:9.0-devel-ubuntu16.04
+# FROM nvidia/cudagl:9.0-devel-ubuntu16.04
+
+# FROM nvdia/cudagl:11.4.2-base
+FROM nvidia/cuda:10.1-base-ubuntu16.04
+CMD nvidia-smi
 
 # Develop
 RUN apt-get update && apt-get install -y \
@@ -24,17 +28,26 @@ RUN apt-get update && apt-get install -y \
 # Intall some basic GUI tools
 RUN apt-get update && apt-get install -y \
         cmake-qt-gui \
-        gnome-terminal
+        gnome-terminal 
 
 # Install ROS
+# RUN apt-get install -y apt-transport-https
+# RUN apt -y update ; exit 0
 RUN sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-RUN apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net:80 --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+# RUN apt-key adv --keyserver hkp://pool.sks-keyservers.net:80 --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+RUN apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+# RUN apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+# RUN apt-key adv --keyserver hkp://pool.sks-keyservers.net:80 --recv-key 421C365BD9FF1F717815A3895523BAEEB01FA116
+
+# RUN apt install curl
+# RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
+
 RUN apt-get update && apt-get install -y ros-kinetic-desktop-full ros-kinetic-nmea-msgs ros-kinetic-nmea-navsat-driver ros-kinetic-sound-play ros-kinetic-jsk-visualization ros-kinetic-grid-map ros-kinetic-gps-common ros-kinetic-automotive-autonomy-msgs ros-kinetic-can-msgs ros-kinetic-tf ros-kinetic-tf2
 RUN apt-get update && apt-get install -y ros-kinetic-controller-manager ros-kinetic-ros-control ros-kinetic-ros-controllers ros-kinetic-gazebo-ros-control ros-kinetic-joystick-drivers
 RUN apt-get update && apt-get install -y libnlopt-dev freeglut3-dev qtbase5-dev libqt5opengl5-dev libssh2-1-dev libarmadillo-dev libpcap-dev gksu libgl1-mesa-dev libglew-dev python-wxgtk3.0 software-properties-common libmosquitto-dev libyaml-cpp-dev python-flask python-requests
 
 # Add basic user
-ENV USERNAME govvijay
+ENV USERNAME han98122
 ENV PULSE_SERVER /run/pulse/native
 RUN useradd -m $USERNAME && \
         echo "$USERNAME:$USERNAME" | chpasswd && \
@@ -46,8 +59,11 @@ RUN useradd -m $USERNAME && \
         usermod  --uid 1000 $USERNAME && \
         groupmod --gid 1000 $USERNAME
 
+#Edit the .bashrc in the root directory before the user change (This was added because .bashrc in the home directory for reason wasn't enough to setup ROS on startup)
+# RUN sudo echo "source /opt/ros/kinetic/setup.bash" >> /root/.bashrc 
+
 # Change user
-USER govvijay
+USER han98122
 
 # Setup .bashrc for ROS and Julia
 RUN echo "source /opt/ros/kinetic/setup.bash" >> /home/$USERNAME/.bashrc && \
@@ -56,13 +72,16 @@ RUN echo "source /opt/ros/kinetic/setup.bash" >> /home/$USERNAME/.bashrc && \
         # cd to home on login
         echo "cd" >> /home/$USERNAME/.bashrc && \
         echo "export PATH=$PATH:/opt/julia/bin/" >> /home/$USERNAME/.bashrc && \
-	echo "source /home/govvijay/catkin_ws/devel/setup.bash" >> /home/$USERNAME/.bashrc
+	echo "source /home/han98122/catkin_ws/devel/setup.bash" >> /home/$USERNAME/.bashrc
+
 
 RUN sudo rosdep init \
         && rosdep update
 
+
 ###################################
 # Utilities
+# RUN pip install casadi
 RUN sudo apt-get update && \
 	sudo apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o DPkg::Options::="--force-confold" && \
 	sudo apt-get install -y --no-install-recommends \
@@ -104,58 +123,58 @@ RUN sudo apt-get update && \
 	sudo rm -rf /var/lib/apt/lists/*	
 
 #############
-# Julia language & libraries
-# Install julia 0.6.4
-RUN sudo mkdir -p /opt/julia-0.6.4 && \
-    sudo curl -s -L https://julialang-s3.julialang.org/bin/linux/x64/0.6/julia-0.6.4-linux-x86_64.tar.gz | sudo tar -C /opt/julia-0.6.4 -x -z --strip-components=1 -f - && \
-	sudo ln -fs /opt/julia-0.6.4 /opt/julia-0.6
+# # Julia language & libraries
+# # Install julia 0.6.4
+# RUN sudo mkdir -p /opt/julia-0.6.4 && \
+#     sudo curl -s -L https://julialang-s3.julialang.org/bin/linux/x64/0.6/julia-0.6.4-linux-x86_64.tar.gz | sudo tar -C /opt/julia-0.6.4 -x -z --strip-components=1 -f - && \
+# 	sudo ln -fs /opt/julia-0.6.4 /opt/julia-0.6
 
-# Make v0.6.4 default julia
-RUN sudo ln -fs /opt/julia-0.6.4 /opt/julia
+# # Make v0.6.4 default julia
+# RUN sudo ln -fs /opt/julia-0.6.4 /opt/julia
 
-# add, build, compile packages, -e = evaluate
-RUN	/opt/julia/bin/julia -e 'ENV["PYTHON"]="/usr/bin/python2"; Pkg.add("PyCall")' && \
-	#/opt/julia/bin/julia -e 'Pkg.add("CSV")' && \
-	#/opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
-	#/opt/julia/bin/julia -e 'Pkg.add("DataFrames")' && \
-	/opt/julia/bin/julia -e 'Pkg.add("Ipopt")' && \
-	/opt/julia/bin/julia -e 'Pkg.add("JuMP")' && \
-	#/opt/julia/bin/julia -e 'Pkg.add("NearestNeighbors")' && \
-	#/opt/julia/bin/julia -e 'Pkg.add("NPZ")' && \
-	#/opt/julia/bin/julia -e 'Pkg.add("PyPlot")' && \
-	#/opt/julia/bin/julia -e 'Pkg.add("RobotOS")' && \
-	#/opt/julia/bin/julia -e 'Pkg.add("YAML")' && \
-	#/opt/julia/bin/julia -e 'using CSV' && \
-	#/opt/julia/bin/julia -e 'using ControlSystems' && \
-	#/opt/julia/bin/julia -e 'using DataFrames' && \
-	/opt/julia/bin/julia -e 'using Ipopt' && \
-	/opt/julia/bin/julia -e 'using JuMP' && \
-	#/opt/julia/bin/julia -e 'using NearestNeighbors' && \
-	#/opt/julia/bin/julia -e 'using NPZ' && \
-	#/opt/julia/bin/julia -e 'using PyPlot' && \
-	#/opt/julia/bin/julia -e 'using RobotOS' && \
-	#/opt/julia/bin/julia -e 'using YAML' && \
-	/opt/julia/bin/julia -e 'using PyCall'
+# # add, build, compile packages, -e = evaluate
+# RUN	/opt/julia/bin/julia -e 'ENV["PYTHON"]="/usr/bin/python2"; Pkg.add("PyCall")' && \
+# 	#/opt/julia/bin/julia -e 'Pkg.add("CSV")' && \
+# 	#/opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
+# 	#/opt/julia/bin/julia -e 'Pkg.add("DataFrames")' && \
+# 	/opt/julia/bin/julia -e 'Pkg.add("Ipopt")' && \
+# 	/opt/julia/bin/julia -e 'Pkg.add("JuMP")' && \
+# 	#/opt/julia/bin/julia -e 'Pkg.add("NearestNeighbors")' && \
+# 	#/opt/julia/bin/julia -e 'Pkg.add("NPZ")' && \
+# 	#/opt/julia/bin/julia -e 'Pkg.add("PyPlot")' && \
+# 	#/opt/julia/bin/julia -e 'Pkg.add("RobotOS")' && \
+# 	#/opt/julia/bin/julia -e 'Pkg.add("YAML")' && \
+# 	#/opt/julia/bin/julia -e 'using CSV' && \
+# 	#/opt/julia/bin/julia -e 'using ControlSystems' && \
+# 	#/opt/julia/bin/julia -e 'using DataFrames' && \
+# 	/opt/julia/bin/julia -e 'using Ipopt' && \
+# 	/opt/julia/bin/julia -e 'using JuMP' && \
+# 	#/opt/julia/bin/julia -e 'using NearestNeighbors' && \
+# 	#/opt/julia/bin/julia -e 'using NPZ' && \
+# 	#/opt/julia/bin/julia -e 'using PyPlot' && \
+# 	#/opt/julia/bin/julia -e 'using RobotOS' && \
+# 	#/opt/julia/bin/julia -e 'using YAML' && \
+# 	/opt/julia/bin/julia -e 'using PyCall'
 
-# Additional Julia libraries for H-OBCA
-RUN /opt/julia/bin/julia -e 'Pkg.add("PyPlot")' && \
-    /opt/julia/bin/julia -e 'Pkg.add("NearestNeighbors")' && \
-    /opt/julia/bin/julia -e 'Pkg.add("DataFrames")' && \
-    /opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
-    /opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
-    /opt/julia/bin/julia -e 'Pkg.add("Hiccup")' && \
-    /opt/julia/bin/julia -e 'using PyPlot' && \
-    /opt/julia/bin/julia -e 'using NearestNeighbors' && \
-    /opt/julia/bin/julia -e 'using DataFrames' && \
-    /opt/julia/bin/julia -e 'using ControlSystems'
+# # Additional Julia libraries for H-OBCA
+# RUN /opt/julia/bin/julia -e 'Pkg.add("PyPlot")' && \
+#     /opt/julia/bin/julia -e 'Pkg.add("NearestNeighbors")' && \
+#     /opt/julia/bin/julia -e 'Pkg.add("DataFrames")' && \
+#     /opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
+#     /opt/julia/bin/julia -e 'Pkg.add("ControlSystems")' && \
+#     /opt/julia/bin/julia -e 'Pkg.add("Hiccup")' && \
+#     /opt/julia/bin/julia -e 'using PyPlot' && \
+#     /opt/julia/bin/julia -e 'using NearestNeighbors' && \
+#     /opt/julia/bin/julia -e 'using DataFrames' && \
+#     /opt/julia/bin/julia -e 'using ControlSystems'
 
 
-# Install Pyjulia
-RUN pip2 install --user julia &&\
-    pip2 install --upgrade pip==9.0.3 && \
-    sudo apt-get -y install python-matplotlib python-scipy && \
-    sudo apt-get clean && \
-    sudo rm -rf /var/lib/apt/lists/*	
+# # Install Pyjulia
+# RUN pip2 install --user julia &&\
+#     pip2 install --upgrade pip==9.0.3 && \
+#     sudo apt-get -y install python-matplotlib python-scipy && \
+#     sudo apt-get clean && \
+#     sudo rm -rf /var/lib/apt/lists/*	
 
 # Video utilities
 RUN sudo apt-get update && \
